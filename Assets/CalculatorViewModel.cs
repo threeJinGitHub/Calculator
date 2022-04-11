@@ -1,79 +1,104 @@
-using System.Collections.Generic;
+using System;
+using UnityEngine;
 
 public class CalculatorViewModel
 {
 
-    public delegate void OnPropertyChanged(string message);
-    
-    public event OnPropertyChanged Notify;
+    public Action<string> OnPropertyChanged;
 
     private readonly CalculatorModel _calculatorModel;
-
-    private string FirstOperand 
+    
+    private void InputChanged()
     {
-        get => _calculatorModel.operand1;
-        set => _calculatorModel.operand1 = value;
+        var calculationResult = _calculatorModel.CalculationResult;
+        if (calculationResult.HasValue)
+        {
+            OnPropertyChanged.Invoke(calculationResult.Value.ToString("F3"));
+        }
+        else if(_calculatorModel.Operand2.HasValue)
+        {
+            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 +
+                                      $"{GetSymbolByOperation(_calculatorModel.CurrentOperation)}" +
+                                      _calculatorModel.Operand2);
+        }
+        else if (_calculatorModel.CurrentOperation != null)
+        {
+            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 +
+                                      $"{GetSymbolByOperation(_calculatorModel.CurrentOperation)}");
+        }
+        else if (_calculatorModel.Operand1.HasValue)
+        {
+            OnPropertyChanged?.Invoke(_calculatorModel.Operand1.ToString());
+        }
+        else if (!_calculatorModel.Operand1.HasValue)
+        {
+            OnPropertyChanged?.Invoke("0");
+        }
     }
 
-    private string SecondOperand
+    private void ErrorInput()
     {
-        get => _calculatorModel.operand2;
-        set => _calculatorModel.operand2 = value;
+        OnPropertyChanged?.Invoke("error");        
     }
 
-    private char Operation
-    {
-        get => _calculatorModel.operation;
-        set => _calculatorModel.operation = value;
-    }
+    private static string GetSymbolByOperation(ICalculable operation) =>
+        operation switch
+        {
+            Division _ => "/",
+            Difference _ => "-",
+            Multiplication _ => "*",
+            Addition _ => "+",
+            _ => throw new AggregateException()
+        };
+    
 
     public CalculatorViewModel()
     {
         _calculatorModel = new CalculatorModel();
+        _calculatorModel.OnChangedInput += InputChanged;
+        _calculatorModel.OnErrorInput += ErrorInput;
     }
-    
 
-
-    public void SetOperation(char operation)
+    public void SetValue(object value)
     {
-        switch (operation)
+        
+        if (value is string sValue && sValue.Equals("C"))
         {
-            case 'C':
-                FirstOperand = string.Empty;
-                SecondOperand = string.Empty;
-                Operation = ' ';
-                Notify?.Invoke(string.Empty);
-                break;
-            case '=':
-            {
-                if (int.TryParse(FirstOperand, out _) && int.TryParse(SecondOperand, out _))
-                {
-                    _calculatorModel.Calculate();
-                    Notify?.Invoke(_calculatorModel.calculationResult);
-                }
-                break;
-            }
-            default:
-            {
-                if (int.TryParse(FirstOperand, out _) && new List<char>{'/', '*','+', '-'}.Contains(operation) && SecondOperand.Equals(string.Empty))
-                {
-                    Operation = operation;
-                    Notify?.Invoke($"{FirstOperand}{Operation}");
-                }
-                break;
-            }
+            _calculatorModel.Clear();
         }
-    }
-
-    public void SetOperand(char operand)
-    {
-        if (char.IsDigit(operand))
+        else if(!_calculatorModel.CalculationResult.HasValue)
         {
-            if(Operation.Equals(' '))
-                FirstOperand += operand;
-            else
-                SecondOperand += operand;
-            Notify?.Invoke($"{FirstOperand}{Operation}{SecondOperand}");
+            if (float.TryParse(value.ToString(), out var fValue))
+            {
+                if(_calculatorModel.CurrentOperation == null)
+                    _calculatorModel.ResetFirstOperand(fValue);
+                else
+                    _calculatorModel.ResetSecondOperand(fValue);
+            }
+            else if(_calculatorModel.Operand1.HasValue)
+            {
+                ICalculable operation = null;
+                switch (value.ToString())
+                {
+                    case "=":
+                        _calculatorModel.Calculate();
+                        break;
+                    case "/":
+                        operation = new Division();
+                        break;
+                    case "-":
+                        operation = new Difference();
+                        break;
+                    case "*":
+                        operation = new Multiplication();
+                        break;
+                    case "+":
+                        operation = new Addition();
+                        break;
+                }
+                if (operation != null)
+                    _calculatorModel.SetOperation(operation);
+            }
         }
     }
 }
