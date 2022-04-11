@@ -10,7 +10,16 @@ public class ViewManager : MonoBehaviour
     
     private void Start()
     {
-        var calculatorViewModel = new CalculatorViewModel();
+        var calculatorViewModel =
+            new CalculatorViewModel(
+                new List<ICalculable>
+                {
+                    new Addition(), 
+                    new Difference(),
+                    new Division(),
+                    new Multiplication()
+                },
+                new CalculatorModel());
         
         _input.SetSubscription(ref calculatorViewModel.OnPropertyChanged);
 

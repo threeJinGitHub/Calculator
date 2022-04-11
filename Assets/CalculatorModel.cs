@@ -117,6 +117,8 @@ public class CalculatorModel
 
 public interface ICalculable
 {
+    public string Symbol { get; }
+
     public float Calculation(float operand1, float operand2);
 
     public bool Validation(float operand1, float operand2);
@@ -124,6 +126,8 @@ public interface ICalculable
 
 public class Multiplication : ICalculable
 {
+    public string Symbol => "*";
+
     public float Calculation(float operand1, float operand2)
     {
         return operand1 * operand2;
@@ -137,6 +141,8 @@ public class Multiplication : ICalculable
 
 public class Difference : ICalculable
 {
+    public string Symbol => "-";
+
     public float Calculation(float operand1, float operand2)
     {
         return operand1 - operand2;
@@ -150,6 +156,8 @@ public class Difference : ICalculable
 
 public class Addition : ICalculable
 {
+    public string Symbol => "+";
+    
     public float Calculation(float operand1, float operand2)
     {
         return operand1 + operand2;
@@ -163,6 +171,8 @@ public class Addition : ICalculable
 
 public class Division : ICalculable
 {
+    public string Symbol => "/";
+    
     public float Calculation(float operand1, float operand2)
     {
         return operand1 / operand2;

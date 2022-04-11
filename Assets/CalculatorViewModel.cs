@@ -1,5 +1,6 @@
 using System;
-using UnityEngine;
+using System.Collections.Generic;
+using System.Linq;
 
 public class CalculatorViewModel
 {
@@ -7,6 +8,8 @@ public class CalculatorViewModel
     public Action<string> OnPropertyChanged;
 
     private readonly CalculatorModel _calculatorModel;
+
+    private readonly List<ICalculable> _operations;
     
     private void InputChanged()
     {
@@ -17,14 +20,12 @@ public class CalculatorViewModel
         }
         else if(_calculatorModel.Operand2.HasValue)
         {
-            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 +
-                                      $"{GetSymbolByOperation(_calculatorModel.CurrentOperation)}" +
+            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 + _calculatorModel.CurrentOperation.Symbol +
                                       _calculatorModel.Operand2);
         }
         else if (_calculatorModel.CurrentOperation != null)
         {
-            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 +
-                                      $"{GetSymbolByOperation(_calculatorModel.CurrentOperation)}");
+            OnPropertyChanged?.Invoke(_calculatorModel.Operand1 + _calculatorModel.CurrentOperation.Symbol);
         }
         else if (_calculatorModel.Operand1.HasValue)
         {
@@ -41,27 +42,16 @@ public class CalculatorViewModel
         OnPropertyChanged?.Invoke("error");        
     }
 
-    private static string GetSymbolByOperation(ICalculable operation) =>
-        operation switch
-        {
-            Division _ => "/",
-            Difference _ => "-",
-            Multiplication _ => "*",
-            Addition _ => "+",
-            _ => throw new AggregateException()
-        };
-    
-
-    public CalculatorViewModel()
+    public CalculatorViewModel(List<ICalculable> operations, CalculatorModel calculatorModel)
     {
-        _calculatorModel = new CalculatorModel();
+        _calculatorModel = calculatorModel;
+        _operations = operations;
         _calculatorModel.OnChangedInput += InputChanged;
         _calculatorModel.OnErrorInput += ErrorInput;
     }
 
     public void SetValue(object value)
     {
-        
         if (value is string sValue && sValue.Equals("C"))
         {
             _calculatorModel.Clear();
@@ -75,27 +65,13 @@ public class CalculatorViewModel
                 else
                     _calculatorModel.ResetSecondOperand(fValue);
             }
+            else if (_calculatorModel.Operand2.HasValue && value.ToString().Equals("="))
+            {
+                _calculatorModel.Calculate();
+            }
             else if(_calculatorModel.Operand1.HasValue)
             {
-                ICalculable operation = null;
-                switch (value.ToString())
-                {
-                    case "=":
-                        _calculatorModel.Calculate();
-                        break;
-                    case "/":
-                        operation = new Division();
-                        break;
-                    case "-":
-                        operation = new Difference();
-                        break;
-                    case "*":
-                        operation = new Multiplication();
-                        break;
-                    case "+":
-                        operation = new Addition();
-                        break;
-                }
+                var operation = _operations.FirstOrDefault(op => op.Symbol.Equals(value.ToString()));
                 if (operation != null)
                     _calculatorModel.SetOperation(operation);
             }
